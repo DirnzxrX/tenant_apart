@@ -1,60 +1,88 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme.dart';
+import '../../data/api_service.dart';
+import '../../widgets/list_item_card.dart';
+import '../../widgets/main_bottom_nav.dart';
+import '../../widgets/summary_stat_card.dart';
+import 'home_screen.dart';
+import 'notification_screen.dart';
+import 'profile_screen.dart';
+
 class RequestsScreen extends StatefulWidget {
-  const RequestsScreen({Key? key}) : super(key: key);
+  const RequestsScreen({super.key});
 
   @override
   State<RequestsScreen> createState() => _RequestsScreenState();
 }
 
 class _RequestsScreenState extends State<RequestsScreen> {
-  // CATATAN ARSITEKTUR: 
-  // Karena Anda menggunakan struktur "Layer-First", saya terpaksa meletakkan 
-  // mock data ini langsung di dalam UI. Di Clean Architecture, data ini 
-  // seharusnya di-inject dari BLoC/Provider yang mengambil dari layer Data.
-  final List<Map<String, dynamic>> _kategoriLayanan = [
-    {
-      'icon': Icons.build_circle_outlined,
-      'title': 'Fasilitas & Maintenance',
-      'subtitle': 'Kelistrikan, AC, Listrik, Kebersihan',
-      'color': const Color(0xFF1A56A6),
-    },
-    {
-      'icon': Icons.language,
-      'title': 'IT & Telekomunikasi',
-      'subtitle': 'Internet, Wi-Fi, Sistem POS',
-      'color': const Color(0xFF1A56A6),
-    },
-    {
-      'icon': Icons.security,
-      'title': 'Keamanan & Keselamatan',
-      'subtitle': 'CCTV, Akses, Kehilangan',
-      'color': const Color(0xFF1A56A6),
-    },
-    {
-      'icon': Icons.grid_view_rounded,
-      'title': 'Lainnya',
-      'subtitle': 'Layanan lainnya',
-      'color': const Color(0xFF1A56A6),
-    },
-  ];
+  final ApiService _apiService = ApiService.instance;
+
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, String>> _stats = [];
+  List<Map<String, String>> _recentRequests = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final categories = await _apiService.getServiceCategories();
+    final stats = await _apiService.getRequestStats();
+    final recentRequests = await _apiService.getRecentRequests();
+
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+      _stats = stats;
+      _recentRequests = recentRequests;
+      _isLoading = false;
+    });
+  }
+
+  Color _toneToColor(String tone) {
+    switch (tone) {
+      case 'success':
+        return AppColors.success;
+      case 'warning':
+        return AppColors.warning;
+      case 'neutral':
+        return AppColors.textPrimary;
+      default:
+        return AppColors.info;
+    }
+  }
+
+  void _handleBottomNavTap(int index) {
+    if (index == 1) return;
+
+    final Widget target = switch (index) {
+      0 => const HomeScreen(),
+      2 => const NotificationScreen(),
+      _ => const ProfileScreen(),
+    };
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => target,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Warna background agak abu-abu sesuai desain
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3353), // Biru gelap
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Service Request',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
+        automaticallyImplyLeading: false,
+        title: const Text('Service Request'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -64,59 +92,64 @@ class _RequestsScreenState extends State<RequestsScreen> {
       ),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 100), // Ruang untuk tombol di bawah
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchBar(),
-                const SizedBox(height: 16),
-                _buildKategoriSection(),
-                const SizedBox(height: 24),
-                _buildStatusSection(),
-                const SizedBox(height: 24),
-                _buildPermintaanTerbaruSection(),
-              ],
-            ),
-          ),
-          // Tombol Sticky di bawah
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    offset: const Offset(0, -4),
-                    blurRadius: 10,
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 110),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSearchBar(),
+                  const SizedBox(height: 16),
+                  _buildSectionHeader('Kategori Layanan'),
+                  _buildCategories(),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Status Permintaan'),
+                  _buildStats(),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Permintaan Terbaru', trailingLabel: 'Lihat Semua'),
+                  ..._recentRequests.map(
+                    (request) => Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: ListItemCard(
+                        title: request['title']!,
+                        subtitle: request['subtitle']!,
+                        meta: request['meta']!,
+                        status: request['status']!,
+                        statusTone: request['status']!,
+                        leadingIcon: Icons.campaign_outlined,
+                        leadingColor: AppColors.info,
+                        onTap: () {},
+                      ),
+                    ),
                   ),
                 ],
               ),
+            ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: Navigasi ke form buat permintaan
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Form permintaan baru masih dummy.')),
+                  );
                 },
                 icon: const Icon(Icons.add),
-                label: const Text(
-                  'Buat Permintaan Baru',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A56A6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                label: const Text('Buat Permintaan Baru'),
               ),
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 1,
+        onTap: _handleBottomNavTap,
       ),
     );
   }
@@ -124,35 +157,27 @@ class _RequestsScreenState extends State<RequestsScreen> {
   Widget _buildSearchBar() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Cari layanan atau kategori',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
+                prefixIcon: Icon(Icons.search),
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Container(
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: IconButton(
-              icon: const Icon(Icons.filter_list),
-              color: const Color(0xFF1A56A6),
               onPressed: () {},
+              icon: const Icon(Icons.tune_rounded, color: AppColors.info),
             ),
           ),
         ],
@@ -160,206 +185,83 @@ class _RequestsScreenState extends State<RequestsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildCategories() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: _categories.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+
+          return Column(
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(item['icon'] as IconData, color: AppColors.info),
+                ),
+                title: Text(
+                  item['title'] as String,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                subtitle: Text(item['subtitle'] as String),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {},
+              ),
+              if (index < _categories.length - 1) const Divider(indent: 16, endIndent: 16),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStats() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: _stats
+            .map(
+              (item) => SummaryStatCard(
+                count: item['count']!,
+                label: item['label']!,
+                color: _toneToColor(item['tone']!),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {String? trailingLabel}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          if (trailingLabel != null)
+            TextButton(
+              onPressed: () {},
+              child: Text(trailingLabel),
             ),
-          ),
-          TextButton(
-            onPressed: () {},
-            child: const Text(
-              'Lihat Semua',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF1A56A6),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildKategoriSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Kategori Layanan'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Column(
-            children: _kategoriLayanan.asMap().entries.map((entry) {
-              int idx = entry.key;
-              Map<String, dynamic> item = entry.value;
-              return Column(
-                children: [
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(item['icon'], color: item['color']),
-                    ),
-                    title: Text(
-                      item['title'],
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-                    subtitle: Text(
-                      item['subtitle'],
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                    onTap: () {},
-                  ),
-                  if (idx < _kategoriLayanan.length - 1)
-                    Divider(height: 1, color: Colors.grey[200], indent: 16, endIndent: 16),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Status Permintaan',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStatusCard('12', 'Total', Colors.black87),
-              _buildStatusCard('5', 'Menunggu', Colors.orange),
-              _buildStatusCard('4', 'Diproses', Colors.blue),
-              _buildStatusCard('3', 'Selesai', Colors.green),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusCard(String count, String label, Color color) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Column(
-          children: [
-            Text(
-              count,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPermintaanTerbaruSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Permintaan Terbaru'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.campaign, color: Color(0xFF1A56A6)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AC tidak dingin di area lobby',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '#FS-25023-0218',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '30 Jan 2023',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Menunggu',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

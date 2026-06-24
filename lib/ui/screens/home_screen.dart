@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
-// Perhatikan: Nama file disesuaikan dengan yang ada di Explorer VS Code Anda
-import 'service_request_screen.dart'; 
+
+import '../../core/theme.dart';
+import '../../data/api_service.dart';
+import '../../widgets/list_item_card.dart';
+import '../../widgets/main_bottom_nav.dart';
+import '../../widgets/quick_access_menu.dart';
+import '../../widgets/summary_stat_card.dart';
+import 'billing_screen.dart';
+import 'notification_screen.dart';
+import 'permit_screen.dart';
+import 'profile_screen.dart';
+import 'service_request_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,40 +20,90 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+  final ApiService _apiService = ApiService.instance;
 
-  void _onItemTapped(int index) {
+  List<Map<String, dynamic>> _summary = [];
+  List<Map<String, dynamic>> _menus = [];
+  List<Map<String, String>> _announcements = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final summary = await _apiService.getHomeSummary();
+    final menus = await _apiService.getQuickMenus();
+    final announcements = await _apiService.getAnnouncements();
+
+    if (!mounted) return;
     setState(() {
-      _selectedIndex = index;
+      _summary = summary;
+      _menus = menus;
+      _announcements = announcements;
+      _isLoading = false;
     });
   }
 
-  // --- Fungsi Navigasi dari Menu Akses Cepat ---
-  void _navigateToScreen(BuildContext context, String title) {
-    Widget targetScreen;
-    
-    switch (title) {
-      case 'Service Request':
-        // Pastikan nama class di file service_request_screen.dart adalah RequestsScreen
-        targetScreen = const RequestsScreen(); 
-        break;
-      case 'Billing':
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur Billing segera hadir')));
-        return; 
-      case 'Permit & Approval':
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur Permit segera hadir')));
-        return;
+  Color _toneToColor(String tone) {
+    switch (tone) {
+      case 'success':
+        return AppColors.success;
+      case 'warning':
+        return AppColors.warning;
+      case 'danger':
+        return AppColors.danger;
       default:
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Menuju $title...')));
-        return;
+        return AppColors.info;
     }
+  }
 
-    // Mengganti MaterialPageRoute dengan PageRouteBuilder agar error hilang
+  void _pushScreen(Widget screen) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        pageBuilder: (_, __, ___) => screen,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _handleQuickMenuTap(String title) {
+    switch (title) {
+      case 'Service Request':
+        _pushScreen(const RequestsScreen());
+        return;
+      case 'Billing':
+        _pushScreen(const BillingScreen());
+        return;
+      case 'Permit & Approval':
+        _pushScreen(const PermitScreen());
+        return;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Menu $title masih menggunakan data dummy.')),
+        );
+    }
+  }
+
+  void _handleBottomNavTap(int index) {
+    if (index == 0) return;
+
+    final Widget target = switch (index) {
+      1 => const RequestsScreen(),
+      2 => const NotificationScreen(),
+      _ => const ProfileScreen(),
+    };
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => target,
+        transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -53,239 +113,106 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3353), // Biru gelap tenant
-        elevation: 0,
-        automaticallyImplyLeading: false, // Hilangkan tombol back default
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            Text('Halo, Tenant!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            Text('Selamat datang di TenantHub', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(
+              'Halo, Tenant!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            Text(
+              'Selamat datang di TenantHub',
+              style: TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => _pushScreen(const NotificationScreen()),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            _buildRingkasanHariIni(),
-            const SizedBox(height: 24),
-            _buildAksesCepat(context),
-            const SizedBox(height: 24),
-            _buildPengumumanTerbaru(),
-            const SizedBox(height: 32), // Padding bawah
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF1A56A6),
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view), activeIcon: Icon(Icons.grid_view_rounded), label: 'Layanan'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), activeIcon: Icon(Icons.notifications), label: 'Notifikasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
-        ],
-      ),
-    );
-  }
-
-  // --- KOMPONEN UI: Ringkasan Hari Ini ---
-  Widget _buildRingkasanHariIni() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Ringkasan Hari Ini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Lihat Semua', style: TextStyle(fontSize: 12, color: Color(0xFF1A56A6), fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16.0),
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('12', 'Permintaan', Colors.blue),
-              _buildStatItem('5', 'Menunggu', Colors.orange),
-              _buildStatItem('3', 'Disetujui', Colors.green),
-              _buildStatItem('2', 'Ditolak', Colors.red),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(String count, String label, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            // Mengubah withOpacity menjadi withValues sesuai standar baru
-            color: color.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withValues(alpha: 0.5)),
-          ),
-          child: Text(count, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.black87)),
-      ],
-    );
-  }
-
-  // --- KOMPONEN UI: Akses Cepat ---
-  Widget _buildAksesCepat(BuildContext context) {
-    final List<Map<String, dynamic>> menuItems = [
-      {'icon': Icons.assignment_outlined, 'title': 'Service Request', 'color': const Color(0xFF1A56A6)},
-      {'icon': Icons.receipt_long_outlined, 'title': 'Billing', 'color': const Color(0xFF1A56A6)},
-      {'icon': Icons.fact_check_outlined, 'title': 'Permit & Approval', 'color': const Color(0xFF1A56A6)},
-      {'icon': Icons.campaign_outlined, 'title': 'Announcement', 'color': const Color(0xFF1A56A6)},
-      {'icon': Icons.folder_copy_outlined, 'title': 'Document Center', 'color': const Color(0xFF1A56A6)},
-      {'icon': Icons.local_shipping_outlined, 'title': 'Loading & Delivery', 'color': const Color(0xFF1A56A6)},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text('Akses Cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.85,
-            ),
-            itemCount: menuItems.length,
-            itemBuilder: (context, index) {
-              final item = menuItems[index];
-              return _buildAksesCepatItem(context, item['icon'] as IconData, item['title'] as String, item['color'] as Color);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAksesCepatItem(BuildContext context, IconData icon, String title, Color color) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _navigateToScreen(context, title),
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.black87),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- KOMPONEN UI: Pengumuman Terbaru ---
-  Widget _buildPengumumanTerbaru() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Pengumuman Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Lihat Semua', style: TextStyle(fontSize: 12, color: Color(0xFF1A56A6), fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16.0),
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
-                child: const Icon(Icons.campaign, color: Color(0xFF1A56A6)),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Maintenance Sistem AC Mall', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pemberitahuan rutin akan dilakukan pada 25 Des 2023, 00:00 - 05:00 WIB.',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 11),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildSectionHeader('Ringkasan Hari Ini', trailingLabel: 'Lihat Semua'),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
                     ),
-                    const SizedBox(height: 8),
-                    Text('22 Des 2023', style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                  ],
-                ),
+                    child: Row(
+                      children: _summary
+                          .map(
+                            (item) => SummaryStatCard(
+                              count: item['count'] as String,
+                              label: item['label'] as String,
+                              color: _toneToColor(item['tone'] as String),
+                              icon: item['icon'] as IconData,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Akses Cepat'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: QuickAccessMenu(
+                      items: _menus,
+                      onTap: _handleQuickMenuTap,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Pengumuman Terbaru', trailingLabel: 'Lihat Semua'),
+                  ..._announcements.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: ListItemCard(
+                        title: item['title']!,
+                        subtitle: item['body']!,
+                        meta: item['date']!,
+                        leadingIcon: Icons.campaign_outlined,
+                        leadingColor: AppColors.info,
+                        onTap: () {},
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 0,
+        onTap: _handleBottomNavTap,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {String? trailingLabel}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          if (trailingLabel != null)
+            TextButton(
+              onPressed: () {},
+              child: Text(trailingLabel),
+            ),
+        ],
+      ),
     );
   }
 }

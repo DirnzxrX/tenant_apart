@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
+
+import '../../core/theme.dart';
+import '../../data/api_service.dart';
+import '../../widgets/main_bottom_nav.dart';
 import 'auth/login_screen.dart';
+import 'home_screen.dart';
+import 'notification_screen.dart';
+import 'service_request_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key}); 
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // STATE UI & DATA
+  final ApiService _apiService = ApiService.instance;
+
   bool _isLoading = true;
   bool _isLoggingOut = false;
   Map<String, String>? _userData;
@@ -20,94 +28,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _fetchProfileData();
   }
 
-  // --- LOGIKA BISNIS DI DALAM UI (Anti-Pattern) ---
-  // Mengambil data dari API langsung di Screen
   Future<void> _fetchProfileData() async {
     try {
-      // Simulasi delay HTTP Request (misal: ApiService().getProfile())
-      await Future.delayed(const Duration(seconds: 2));
-      
+      final profile = await _apiService.getProfile();
+
+      if (!mounted) return;
+      setState(() {
+        _userData = profile;
+        _isLoading = false;
+      });
+    } catch (_) {
       if (mounted) {
         setState(() {
-          _userData = {
-            'name': 'Budi Santoso',
-            'company': 'PT Maju Bersama',
-            'unit': 'Lantai 3 - Unit 305A',
-            'email': 'tenant@acmemall.com',
-            'phone': '+62 812-3456-7890',
-          };
           _isLoading = false;
         });
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-      // Gunakan context.mounted untuk ScaffoldMessenger setelah await
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memuat profil')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal memuat profil')),
+      );
     }
   }
 
-  // Logika Logout + HTTP Request di dalam UI
-  Future<void> _processLogout(BuildContext context) async {
-    Navigator.pop(context); // Tutup dialog konfirmasi
-    
+  Future<void> _processLogout() async {
+    Navigator.pop(context);
+
     setState(() {
       _isLoggingOut = true;
     });
 
     try {
-      // Simulasi memanggil API untuk menghancurkan token di server
-      await Future.delayed(const Duration(seconds: 1)); 
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
 
-      // Gunakan context.mounted (standar Flutter terbaru)
-      if (!context.mounted) return;
-
-      // Navigasi ke Login menggunakan PageRouteBuilder sebagai alternatif
       Navigator.pushAndRemoveUntil(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          pageBuilder: (_, __, ___) => const LoginScreen(),
+          transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },
         ),
-        (Route<dynamic> route) => false,
+        (route) => false,
       );
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
-        setState(() => _isLoggingOut = false);
+        setState(() {
+          _isLoggingOut = false;
+        });
       }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal keluar. Periksa koneksi Anda.')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal keluar. Periksa koneksi Anda.')),
+      );
     }
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
+  void _showLogoutDialog() {
+    showDialog<void>(
       context: context,
       barrierDismissible: !_isLoggingOut,
-      builder: (BuildContext dialogContext) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Konfirmasi Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text('Konfirmasi Keluar'),
           content: const Text('Apakah Anda yakin ingin keluar dari aplikasi TenantHub?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           actions: [
             TextButton(
               onPressed: _isLoggingOut ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              child: const Text('Batal'),
             ),
             ElevatedButton(
-              onPressed: _isLoggingOut ? null : () => _processLogout(context),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
-              child: const Text('Keluar', style: TextStyle(color: Colors.white)),
+              onPressed: _isLoggingOut ? null : _processLogout,
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+              child: const Text('Keluar'),
             ),
           ],
         );
@@ -115,33 +108,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _handleBottomNavTap(int index) {
+    if (index == 3) return;
+
+    final Widget target = switch (index) {
+      0 => const HomeScreen(),
+      1 => const RequestsScreen(),
+      _ => const NotificationScreen(),
+    };
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => target,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3353), 
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Profil Tenant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: const Text('Profil Tenant'),
       ),
       body: Stack(
         children: [
-          // Kondisi Loading Data Profil
           if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: Color(0xFF1A56A6)))
+            const Center(child: CircularProgressIndicator())
           else if (_userData != null)
             SingleChildScrollView(
               child: Column(
                 children: [
                   _buildProfileHeader(),
                   const SizedBox(height: 24),
-                  _buildMenuSection(context),
+                  _buildMenuSection(),
                 ],
               ),
             ),
-            
-          // Overlay Loading saat Logout
           if (_isLoggingOut)
             Container(
               color: Colors.black54,
@@ -151,6 +157,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 3,
+        onTap: _handleBottomNavTap,
+      ),
     );
   }
 
@@ -158,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       width: double.infinity,
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       child: Column(
         children: [
           Stack(
@@ -166,39 +176,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 50,
-                backgroundColor: Colors.blue[100],
+                backgroundColor: AppColors.primaryLight,
                 child: Text(
-                  _userData!['name']![0], 
-                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF1A56A6)),
+                  _userData!['name']![0],
+                  style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.info,
+                  ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color: Color(0xFF1A56A6), shape: BoxShape.circle),
-                child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: AppColors.info,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.edit, size: 16, color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             _userData!['name']!,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             _userData!['company']!,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(20),
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               'Unit: ${_userData!['unit']}',
-              style: const TextStyle(color: Color(0xFF1A56A6), fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: AppColors.info,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -206,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context) {
+  Widget _buildMenuSection() {
     return Column(
       children: [
         _buildMenuGroup(
@@ -235,19 +256,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _isLoggingOut ? null : () => _showLogoutDialog(context),
-              icon: Icon(Icons.logout, color: Colors.red[700]),
-              label: Text('Keluar', style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold)),
+              onPressed: _isLoggingOut ? null : _showLogoutDialog,
+              icon: const Icon(Icons.logout, color: AppColors.danger),
+              label: const Text(
+                'Keluar',
+                style: TextStyle(color: AppColors.danger),
+              ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: Colors.red[700]!),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                side: const BorderSide(color: AppColors.danger),
               ),
             ),
           ),
@@ -262,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             title,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54),
@@ -280,17 +301,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Icon(icon, color: Colors.grey[700], size: 20),
       ),
       title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (trailingText != null) 
+          if (trailingText != null)
             Text(trailingText, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-          if (isAction) 
-            const Icon(Icons.chevron_right, color: Colors.grey),
+          if (isAction) const Icon(Icons.chevron_right, color: Colors.grey),
         ],
       ),
       onTap: isAction ? () {} : null,

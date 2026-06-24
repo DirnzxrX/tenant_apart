@@ -1,104 +1,89 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme.dart';
+import '../../data/api_service.dart';
+import '../../widgets/list_item_card.dart';
+import '../../widgets/main_bottom_nav.dart';
+import 'home_screen.dart';
+import 'profile_screen.dart';
+import 'service_request_screen.dart';
+
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({Key? key}) : super(key: key);
+  const NotificationScreen({super.key});
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
 class _NotificationScreenState extends State<NotificationScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  final ApiService _apiService = ApiService.instance;
 
-  // CATATAN ARSITEKTUR:
-  // Data statis terakhir. Perhatikan bagaimana kita harus melakukan hardcode
-  // pengelompokan "Hari ini" dan "Kemarin" di UI. Di aplikasi nyata, 
-  // grouping data berdasarkan tanggal ini HARUS dilakukan di layer BLoC/ViewModel, 
-  // bukan di dalam fungsi build() karena akan membebani memori saat data bertambah.
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'dateGroup': 'Hari ini',
-      'items': [
-        {
-          'type': 'Pengumuman',
-          'title': 'Pemeliharaan Rutin AC Mall',
-          'body': 'Pemeliharaan rutin akan dilakukan pada AC Mall, pastikan...',
-          'time': '08:42',
-          'icon': Icons.campaign,
-          'iconColor': Colors.blue,
-          'bgColor': Colors.blue[50],
-          'isUnread': true,
-        },
-        {
-          'type': 'Notifikasi',
-          'title': 'Permohonan PSA-250322-0012',
-          'body': 'Status permohonan Anda telah melalui persetujuan...',
-          'time': '06:45',
-          'icon': Icons.assignment,
-          'iconColor': Colors.indigo,
-          'bgColor': Colors.indigo[50],
-          'isUnread': true,
-        },
-        {
-          'type': 'Pengumuman Mall',
-          'title': 'Renovasi Toilet Disetujui',
-          'body': 'Status permohonan Anda APRA-250321-0012 telah...',
-          'time': '06:45',
-          'icon': Icons.fact_check_outlined,
-          'iconColor': Colors.green,
-          'bgColor': Colors.green[50],
-          'isUnread': false,
-        },
-      ]
-    },
-    {
-      'dateGroup': 'Kemarin',
-      'items': [
-        {
-          'type': 'Billing',
-          'title': 'Invoice INV/2023/03/0012',
-          'body': 'Invoice tagihan Anda bulan ini telah terbit, segera...',
-          'time': '17:30',
-          'icon': Icons.receipt_long,
-          'iconColor': Colors.orange,
-          'bgColor': Colors.orange[50],
-          'isUnread': false,
-        },
-        {
-          'type': 'Pengumuman',
-          'title': 'Jam Operasional Mall',
-          'body': 'Perubahan jam operasional selama libur nasional...',
-          'time': '11:30',
-          'icon': Icons.campaign,
-          'iconColor': Colors.blue,
-          'bgColor': Colors.blue[50],
-          'isUnread': false,
-        },
-      ]
-    }
-  ];
+  late TabController _tabController;
+  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _announcements = [];
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadData();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadData() async {
+    final all = await _apiService.getNotifications('Semua');
+    final announcements = await _apiService.getNotifications('Pengumuman');
+    final notifications = await _apiService.getNotifications('Notifikasi');
+
+    if (!mounted) return;
+    setState(() {
+      _all = all;
+      _announcements = announcements;
+      _notifications = notifications;
+      _isLoading = false;
+    });
+  }
+
+  Color _toneToColor(String tone) {
+    switch (tone) {
+      case 'success':
+        return AppColors.success;
+      case 'warning':
+        return AppColors.warning;
+      case 'danger':
+        return AppColors.danger;
+      default:
+        return AppColors.info;
+    }
+  }
+
+  void _handleBottomNavTap(int index) {
+    if (index == 2) return;
+
+    final Widget target = switch (index) {
+      0 => const HomeScreen(),
+      1 => const RequestsScreen(),
+      _ => const ProfileScreen(),
+    };
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => target,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Background putih utuh untuk layar ini
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3353),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Notifikasi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: const Text('Notifikasi'),
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
@@ -108,142 +93,83 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
       ),
       body: Column(
         children: [
-          _buildTabBar(),
-          _buildMarkAllReadBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Semua'),
+              Tab(text: 'Pengumuman'),
+              Tab(text: 'Notifikasi'),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _buildNotificationList('Semua'),
-                _buildNotificationList('Pengumuman'),
-                _buildNotificationList('Notifikasi'),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.checklist, size: 16),
+                  label: const Text('Tandai semua dibaca'),
+                ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: const Color(0xFF1A56A6),
-        unselectedLabelColor: Colors.grey,
-        indicatorColor: const Color(0xFF1A56A6),
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-        tabs: const [
-          Tab(text: 'Semua'),
-          Tab(text: 'Pengumuman'),
-          Tab(text: 'Notifikasi'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMarkAllReadBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.checklist, size: 16, color: Color(0xFF1A56A6)),
-            label: const Text(
-              'Tandai semua Dibaca',
-              style: TextStyle(fontSize: 12, color: Color(0xFF1A56A6), fontWeight: FontWeight.w600),
-            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildNotificationList(_all),
+                      _buildNotificationList(_announcements),
+                      _buildNotificationList(_notifications),
+                    ],
+                  ),
           ),
         ],
       ),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 2,
+        onTap: _handleBottomNavTap,
+      ),
     );
   }
 
-  Widget _buildNotificationList(String filter) {
-    // Catatan: Logika filtering diabaikan sementara untuk menyederhanakan UI mockup
+  Widget _buildNotificationList(List<Map<String, dynamic>> groups) {
     return ListView.builder(
-      itemCount: _notifications.length,
+      itemCount: groups.length,
       itemBuilder: (context, groupIndex) {
-        final group = _notifications[groupIndex];
+        final group = groups[groupIndex];
         final items = group['items'] as List;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Text(
-                group['dateGroup'],
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                group['dateGroup'] as String,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
-            ...items.map((item) => _buildNotificationItem(item)).toList(),
+            ...items.map((item) {
+              final map = item as Map<String, dynamic>;
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: ListItemCard(
+                  title: map['title'] as String,
+                  subtitle: map['body'] as String,
+                  meta: '${map['type']} • ${map['time']}',
+                  leadingIcon: map['icon'] as IconData,
+                  leadingColor: _toneToColor(map['tone'] as String),
+                  isUnread: map['isUnread'] as bool,
+                  onTap: () {},
+                ),
+              );
+            }),
           ],
         );
       },
-    );
-  }
-
-  Widget _buildNotificationItem(Map<String, dynamic> item) {
-    return Container(
-      color: item['isUnread'] ? Colors.blue[50]?.withOpacity(0.3) : Colors.white,
-      child: Column(
-        children: [
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-            leading: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: item['bgColor'],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(item['icon'], color: item['iconColor'], size: 24),
-            ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  item['type'],
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  item['time'],
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  item['title'],
-                  style: TextStyle(
-                    fontWeight: item['isUnread'] ? FontWeight.bold : FontWeight.w600,
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item['body'],
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-            onTap: () {},
-          ),
-          Divider(height: 1, color: Colors.grey[100], indent: 72),
-        ],
-      ),
     );
   }
 }

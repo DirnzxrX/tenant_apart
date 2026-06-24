@@ -1,46 +1,43 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme.dart';
+import '../../data/api_service.dart';
+import '../../widgets/list_item_card.dart';
+
 class BillingScreen extends StatefulWidget {
-  const BillingScreen({Key? key}) : super(key: key);
+  const BillingScreen({super.key});
 
   @override
   State<BillingScreen> createState() => _BillingScreenState();
 }
 
 class _BillingScreenState extends State<BillingScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  final ApiService _apiService = ApiService.instance;
 
-  // CATATAN ARSITEKTUR: 
-  // Sekali lagi, karena tidak ada State Management, data dummy ini ditanam paksa di UI.
-  // Bayangkan jika data ini berjumlah 500 baris dari API, file UI Anda akan hang saat memfilternya.
-  final List<Map<String, dynamic>> _invoices = [
-    {
-      'id': 'INV/2023/05/0072',
-      'desc': 'Sewa & Service Charge - Mei 2023',
-      'dueDate': '31 Mei 2023',
-      'amount': 'Rp 13.700.000',
-      'status': 'Belum Dibayar',
-    },
-    {
-      'id': 'INV/2023/04/0038',
-      'desc': 'Sewa & Service Charge - Apr 2023',
-      'dueDate': '29 Apr 2023',
-      'amount': 'Rp 14.842.000',
-      'status': 'Belum Dibayar',
-    },
-    {
-      'id': 'INV/2023/03/0069',
-      'desc': 'Sewa & Service Charge - Mar 2023',
-      'dueDate': '31 Mar 2023',
-      'amount': 'Rp 13.250.000',
-      'status': 'Lunas',
-    },
-  ];
+  late TabController _tabController;
+  List<Map<String, String>> _invoices = [];
+  Map<String, String>? _summary;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final results = await Future.wait([
+      _apiService.getBillingSummary(),
+      _apiService.getInvoices(),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _summary = results[0] as Map<String, String>;
+      _invoices = results[1] as List<Map<String, String>>;
+      _isLoading = false;
+    });
   }
 
   @override
@@ -52,12 +49,8 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A3353),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Billing Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: const Text('Billing Information'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -65,41 +58,60 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildOutstandingCard(),
-          _buildTabBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                _buildInvoiceList('Semua'),
-                _buildInvoiceList('Belum Dibayar'),
-                _buildInvoiceList('Lunas'),
+                _buildOutstandingCard(),
+                TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: 'Semua'),
+                    Tab(text: 'Belum Dibayar'),
+                    Tab(text: 'Lunas'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildInvoiceList('Semua'),
+                      _buildInvoiceList('Belum Dibayar'),
+                      _buildInvoiceList('Lunas'),
+                    ],
+                  ),
+                ),
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {},
+                      child: const Text('Riwayat Pembayaran'),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          _buildBottomButton(),
-        ],
-      ),
     );
   }
 
   Widget _buildOutstandingCard() {
     return Container(
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.all(20.0),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.primaryDark.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -107,137 +119,62 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Total Outstanding', style: TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500)),
+              const Text(
+                'Total Outstanding',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 8),
-              const Text('Rp 24.560.000', style: TextStyle(color: Colors.black87, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(
+                _summary!['totalOutstanding']!,
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text('3 Invoice Belum Dibayar', style: TextStyle(color: Colors.red[400], fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                _summary!['subtitle']!,
+                style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w700),
+              ),
             ],
           ),
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
+            width: 58,
+            height: 58,
+            decoration: const BoxDecoration(
+              color: AppColors.primaryLight,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.receipt_long, color: Color(0xFF1A56A6), size: 32),
+            child: const Icon(Icons.receipt_long_outlined, color: AppColors.info, size: 30),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: const Color(0xFF1A56A6),
-        unselectedLabelColor: Colors.grey,
-        indicatorColor: const Color(0xFF1A56A6),
-        indicatorWeight: 3,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-        tabs: const [
-          Tab(text: 'Semua'),
-          Tab(text: 'Belum Dibayar'),
-          Tab(text: 'Lunas'),
         ],
       ),
     );
   }
 
   Widget _buildInvoiceList(String filter) {
-    // Logika filter statis di dalam UI (Anti-pattern jika datanya besar)
-    final filteredInvoices = _invoices.where((inv) {
+    final filtered = _invoices.where((invoice) {
       if (filter == 'Semua') return true;
-      return inv['status'] == filter;
+      return invoice['status'] == filter;
     }).toList();
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      itemCount: filteredInvoices.length,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final inv = filteredInvoices[index];
-        final isLunas = inv['status'] == 'Lunas';
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(inv['id'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  Text(inv['amount'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(inv['desc'], style: TextStyle(color: Colors.grey[700], fontSize: 12)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Jatuh Tempo: ${inv['dueDate']}', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isLunas ? Colors.green[50] : Colors.red[50],
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isLunas ? Colors.green[200]! : Colors.red[200]!),
-                    ),
-                    child: Text(
-                      inv['status'],
-                      style: TextStyle(
-                        color: isLunas ? Colors.green[700] : Colors.red[700],
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        final invoice = filtered[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ListItemCard(
+            title: invoice['id']!,
+            subtitle: invoice['desc']!,
+            meta: 'Jatuh Tempo: ${invoice['dueDate']}',
+            amount: invoice['amount']!,
+            status: invoice['status']!,
+            statusTone: invoice['status']!,
+            leadingIcon: Icons.receipt_long_outlined,
+            leadingColor: AppColors.info,
+            onTap: () {},
           ),
         );
       },
     );
   }
-
-  Widget _buildBottomButton() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            offset: const Offset(0, -4),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            side: const BorderSide(color: Color(0xFF1A56A6)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Text('Riwayat Pembayaran', style: TextStyle(color: Color(0xFF1A56A6), fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
-  }
-} 
+}

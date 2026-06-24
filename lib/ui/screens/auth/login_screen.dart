@@ -1,40 +1,25 @@
 import 'package:flutter/material.dart';
-import '../home_screen.dart'; // Asumsi HomeScreen ada di direktori induk (ui/screens/)
-// import '../../data/api_service.dart'; // TODO: Uncomment ini setelah file api_service dibuat
 
-// --- MOCK API SERVICE (Hanya untuk keperluan kompilasi sementara) ---
-// Dalam implementasi nyata, letakkan ini di lib/data/api_service.dart
-class ApiService {
-  Future<bool> login(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 2)); // Simulasi network
-    if (email == 'tenant@acmemall.com' && password == 'password123') {
-      return true; // Berhasil
-    } else {
-      throw Exception('Email atau password tidak valid.');
-    }
-  }
-}
-// ------------------------------------------------------------------
+import '../../../core/theme.dart';
+import '../../../data/api_service.dart';
+import '../home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key}); // Diperbarui menggunakan super.key
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>(); 
-  
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController(text: ApiService.demoEmail);
+  final _passwordController = TextEditingController(text: ApiService.demoPassword);
+  final ApiService _apiService = ApiService.instance;
+
   bool _isPasswordVisible = false;
-  bool _rememberMe = false;
-  bool _isLoading = false; 
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  // Instansiasi service (idealnya di-inject melalui Provider/GetIt)
-  final ApiService _apiService = ApiService();
+  bool _rememberMe = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -43,49 +28,43 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Logika login sekarang didelegasikan ke ApiService
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true; 
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        // Pendelegasian logika ke layer data (ApiService)
-        final isSuccess = await _apiService.login(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
+    setState(() {
+      _isLoading = true;
+    });
 
-        if (!mounted) return;
+    try {
+      final isSuccess = await _apiService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-        if (isSuccess) {
-          // Navigasi ke HomeScreen menggunakan PageRouteBuilder agar error hilang
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
-          );
-        }
-      } catch (e) {
-        if (!mounted) return;
-        // Menampilkan pesan error spesifik dari service
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red[700],
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false; 
-          });
-        }
+      if (!mounted || !isSuccess) return;
+
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const HomeScreen(),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -93,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A3353),
+      backgroundColor: AppColors.primaryDark,
       body: SafeArea(
         child: Column(
           children: [
@@ -105,10 +84,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     RichText(
                       text: const TextSpan(
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
                         children: [
                           TextSpan(text: 'TENANT', style: TextStyle(color: Colors.white)),
-                          TextSpan(text: 'HUB', style: TextStyle(color: Color(0xFF4DB6AC))),
+                          TextSpan(text: 'HUB', style: TextStyle(color: AppColors.accent)),
                         ],
                       ),
                     ),
@@ -121,54 +104,61 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            
             Expanded(
               flex: 7,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24.0),
-                    topRight: Radius.circular(24.0),
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
                   ),
                 ),
                 child: SingleChildScrollView(
                   child: Form(
-                    key: _formKey, 
+                    key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Selamat datang!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        Text('Selamat datang!', style: Theme.of(context).textTheme.headlineSmall),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Silakan masuk untuk melanjutkan ke TenantHub.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
                         const SizedBox(height: 24),
-                        
-                        const Text('Email atau Username', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Email atau Username',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _emailController,
-                          enabled: !_isLoading, 
+                          enabled: !_isLoading,
+                          keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Email/Username tidak boleh kosong';
                             }
                             return null;
                           },
-                          decoration: InputDecoration(
-                            hintText: 'tenant@acmemall.com',
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                          decoration: const InputDecoration(
+                            hintText: ApiService.demoEmail,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
-                        const Text('Password', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Password',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _passwordController,
+                          enabled: !_isLoading,
                           obscureText: !_isPasswordVisible,
-                          enabled: !_isLoading, 
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Password tidak boleh kosong';
@@ -180,28 +170,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           decoration: InputDecoration(
                             hintText: '••••••••',
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                             suffixIcon: IconButton(
-                              icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility, color: Colors.grey[600]),
-                              onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
+                              icon: Icon(
+                                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
                               children: [
                                 SizedBox(
-                                  height: 24, width: 24,
+                                  width: 24,
+                                  height: 24,
                                   child: Checkbox(
                                     value: _rememberMe,
-                                    onChanged: _isLoading ? null : (value) => setState(() => _rememberMe = value ?? false),
+                                    activeColor: AppColors.info,
+                                    onChanged: _isLoading
+                                        ? null
+                                        : (value) {
+                                            setState(() {
+                                              _rememberMe = value ?? false;
+                                            });
+                                          },
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -210,35 +210,37 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             TextButton(
                               onPressed: _isLoading ? null : () {},
-                              child: const Text('Lupa password?', style: TextStyle(color: Color(0xFF1A56A6), fontWeight: FontWeight.w500)),
+                              child: const Text('Lupa password?'),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
                         SizedBox(
                           width: double.infinity,
-                          height: 48,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1A56A6),
-                              disabledBackgroundColor: Colors.grey[400],
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                            ),
-                            child: _isLoading 
-                                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Masuk'),
                           ),
                         ),
                         const SizedBox(height: 24),
-                        
                         Row(
                           children: [
                             Expanded(child: Divider(color: Colors.grey[300])),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Text('atau masuk dengan', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'atau masuk dengan',
+                                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              ),
                             ),
                             Expanded(child: Divider(color: Colors.grey[300])),
                           ],
@@ -246,15 +248,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
-                          height: 48,
                           child: OutlinedButton.icon(
                             onPressed: _isLoading ? null : () {},
-                            icon: _buildGoogleIcon(), 
-                            label: const Text('Masuk dengan SSO', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey[300]!),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                            ),
+                            icon: const Icon(Icons.business_center_outlined, size: 18),
+                            label: const Text('Masuk dengan SSO'),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            'Demo login: ${ApiService.demoEmail} / ${ApiService.demoPassword}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.primary,
+                                ),
                           ),
                         ),
                       ],
@@ -265,16 +277,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGoogleIcon() {
-    return Container(
-      width: 20, height: 20,
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: const Center(
-        child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }
