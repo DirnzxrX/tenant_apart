@@ -4,8 +4,8 @@ import '../../core/theme.dart';
 import '../../data/api_service.dart';
 import '../../widgets/list_item_card.dart';
 import '../../widgets/main_bottom_nav.dart';
+import 'billing_screen.dart';
 import 'home_screen.dart';
-import 'profile_screen.dart';
 import 'service_request_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -65,7 +65,7 @@ class _NotificationScreenState extends State<NotificationScreen>
     final Widget target = switch (index) {
       0 => const HomeScreen(),
       1 => const RequestsScreen(),
-      _ => const ProfileScreen(),
+      _ => const BillingScreen(),
     };
 
     Navigator.pushReplacement(

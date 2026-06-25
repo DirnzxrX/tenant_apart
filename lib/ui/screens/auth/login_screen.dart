@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Silakan masuk untuk melanjutkan ke TenantHub.',
+                              'Silakan masuk untuk melanjutkan ke Tenant.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: AppColors.textSecondary,

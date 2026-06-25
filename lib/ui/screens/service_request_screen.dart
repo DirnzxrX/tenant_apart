@@ -5,8 +5,8 @@ import '../../data/api_service.dart';
 import '../../widgets/list_item_card.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/summary_stat_card.dart';
+import 'billing_screen.dart';
 import 'home_screen.dart';
-import 'notification_screen.dart';
 import 'profile_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
@@ -62,7 +62,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
     final Widget target = switch (index) {
       0 => const HomeScreen(),
-      2 => const NotificationScreen(),
+      2 => const BillingScreen(),
       _ => const ProfileScreen(),
     };
 
@@ -115,9 +115,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildTopCard(),
-                        const SizedBox(height: 16),
-                        _buildHeroCard(),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 24),
                         _buildSectionHeader('Kategori Layanan'),
                         const SizedBox(height: 10),
                         _buildCategories(),
@@ -239,55 +237,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
-              color: AppColors.info,
-              size: 34,
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Buat permintaan lebih cepat',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Kategori dibuat ringkas, detail lebih jelas, dan statusnya lebih mudah dilacak.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

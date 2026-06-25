@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final Widget target = switch (index) {
       1 => const RequestsScreen(),
-      2 => const NotificationScreen(),
+      2 => const BillingScreen(),
       _ => const ProfileScreen(),
     };
 
@@ -126,9 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildAppBarCard(),
-                        const SizedBox(height: 16),
-                        _buildHeroCard(),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 24),
                         _buildSectionHeader(
                           'Ringkasan Hari Ini',
                           trailingLabel: 'Lihat Semua',
@@ -254,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Selamat datang di TenantHub',
+                  'Selamat datang di Tenant',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -269,89 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.notifications_outlined, color: Colors.white),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeroCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Dashboard tenant yang lebih ringkas',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Semua layanan, tagihan, dan pengumuman ada di satu tempat dengan alur yang lebih cepat.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    _buildHeroBadge('Aktif'),
-                    const SizedBox(width: 8),
-                    _buildHeroBadge('Terhubung'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: const Icon(
-              Icons.home_work_outlined,
-              size: 36,
-              color: AppColors.info,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroBadge(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.info,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }

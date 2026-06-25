@@ -46,12 +46,12 @@ class MainBottomNav extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
             activeIcon: Icon(Icons.grid_view_rounded),
-            label: 'Layanan',
+            label: 'Service Request',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none_rounded),
-            activeIcon: Icon(Icons.notifications_rounded),
-            label: 'Notifikasi',
+            icon: Icon(Icons.receipt_long_outlined),
+            activeIcon: Icon(Icons.receipt_long_rounded),
+            label: 'Billing',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline_rounded),

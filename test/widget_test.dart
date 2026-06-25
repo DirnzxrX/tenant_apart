@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('TenantHub menampilkan splash lalu login screen', (tester) async {
+  testWidgets('Tenant menampilkan splash lalu login screen', (tester) async {
     await tester.pumpWidget(const TenantHubApp());
 
     expect(find.byType(RichText), findsWidgets);

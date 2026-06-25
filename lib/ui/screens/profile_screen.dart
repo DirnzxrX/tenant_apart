@@ -4,8 +4,8 @@ import '../../core/theme.dart';
 import '../../data/api_service.dart';
 import '../../widgets/main_bottom_nav.dart';
 import 'auth/login_screen.dart';
+import 'billing_screen.dart';
 import 'home_screen.dart';
-import 'notification_screen.dart';
 import 'service_request_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -92,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return AlertDialog(
           title: const Text('Konfirmasi Keluar'),
           content: const Text(
-            'Apakah Anda yakin ingin keluar dari aplikasi TenantHub?',
+            'Apakah Anda yakin ingin keluar dari aplikasi Tenant?',
           ),
           actions: [
             TextButton(
@@ -120,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final Widget target = switch (index) {
       0 => const HomeScreen(),
       1 => const RequestsScreen(),
-      _ => const NotificationScreen(),
+      _ => const BillingScreen(),
     };
 
     Navigator.pushReplacement(

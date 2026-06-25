@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../data/api_service.dart';
 import '../../widgets/list_item_card.dart';
+import '../../widgets/main_bottom_nav.dart';
+import 'home_screen.dart';
+import 'profile_screen.dart';
+import 'service_request_screen.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -47,11 +51,35 @@ class _BillingScreenState extends State<BillingScreen>
     super.dispose();
   }
 
+  void _handleBottomNavTap(int index) {
+    if (index == 2) return;
+
+    final Widget target = switch (index) {
+      0 => const HomeScreen(),
+      1 => const RequestsScreen(),
+      _ => const ProfileScreen(),
+    };
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => target,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Billing Information'),
         actions: [
           IconButton(
@@ -101,6 +129,10 @@ class _BillingScreenState extends State<BillingScreen>
                 ),
               ],
             ),
+      bottomNavigationBar: MainBottomNav(
+        currentIndex: 2,
+        onTap: _handleBottomNavTap,
+      ),
     );
   }
 

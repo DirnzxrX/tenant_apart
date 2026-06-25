@@ -4,7 +4,7 @@ import '../../core/theme.dart';
 import '../../data/api_service.dart';
 import '../../widgets/list_item_card.dart';
 import '../../widgets/main_bottom_nav.dart';
-import 'notification_screen.dart';
+import 'billing_screen.dart';
 import 'profile_screen.dart';
 
 class PermitScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _PermitScreenState extends State<PermitScreen>
     }
 
     final Widget target = switch (index) {
-      2 => const NotificationScreen(),
+      2 => const BillingScreen(),
       _ => const ProfileScreen(),
     };
 
