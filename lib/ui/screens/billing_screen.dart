@@ -11,7 +11,8 @@ class BillingScreen extends StatefulWidget {
   State<BillingScreen> createState() => _BillingScreenState();
 }
 
-class _BillingScreenState extends State<BillingScreen> with SingleTickerProviderStateMixin {
+class _BillingScreenState extends State<BillingScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService.instance;
 
   late TabController _tabController;
@@ -49,6 +50,7 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Billing Information'),
         actions: [
@@ -60,37 +62,42 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
+          : Stack(
               children: [
-                _buildOutstandingCard(),
-                TabBar(
-                  controller: _tabController,
-                  tabs: const [
-                    Tab(text: 'Semua'),
-                    Tab(text: 'Belum Dibayar'),
-                    Tab(text: 'Lunas'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildInvoiceList('Semua'),
-                      _buildInvoiceList('Belum Dibayar'),
-                      _buildInvoiceList('Lunas'),
-                    ],
-                  ),
-                ),
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      child: const Text('Riwayat Pembayaran'),
+                const _BillingBackdrop(),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: _buildOutstandingCard(),
                     ),
-                  ),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _buildTabBar(),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildInvoiceList('Semua'),
+                          _buildInvoiceList('Belum Dibayar'),
+                          _buildInvoiceList('Lunas'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {},
+                          child: const Text('Riwayat Pembayaran'),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -99,51 +106,82 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
 
   Widget _buildOutstandingCard() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Total Outstanding',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _summary!['totalOutstanding']!,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _summary!['subtitle']!,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Total Outstanding',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _summary!['totalOutstanding']!,
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _summary!['subtitle']!,
-                style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          Container(
-            width: 58,
-            height: 58,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.receipt_long_outlined, color: AppColors.info, size: 30),
-          ),
+      child: TabBar(
+        controller: _tabController,
+        tabs: const [
+          Tab(text: 'Semua'),
+          Tab(text: 'Belum Dibayar'),
+          Tab(text: 'Lunas'),
         ],
       ),
     );
@@ -156,7 +194,7 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
     }).toList();
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
         final invoice = filtered[index];
@@ -177,4 +215,33 @@ class _BillingScreenState extends State<BillingScreen> with SingleTickerProvider
       },
     );
   }
+}
+
+class _BillingBackdrop extends StatelessWidget {
+  const _BillingBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: CustomPaint(painter: _BillingBackdropPainter()),
+      ),
+    );
+  }
+}
+
+class _BillingBackdropPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    paint.color = AppColors.primary.withValues(alpha: 0.06);
+    canvas.drawCircle(Offset(size.width * 0.9, size.height * 0.07), 100, paint);
+
+    paint.color = AppColors.info.withValues(alpha: 0.05);
+    canvas.drawCircle(Offset(size.width * 0.12, size.height * 0.18), 80, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

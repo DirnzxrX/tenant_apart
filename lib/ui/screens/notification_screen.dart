@@ -15,7 +15,8 @@ class NotificationScreen extends StatefulWidget {
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
-class _NotificationScreenState extends State<NotificationScreen> with SingleTickerProviderStateMixin {
+class _NotificationScreenState extends State<NotificationScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _apiService = ApiService.instance;
 
   late TabController _tabController;
@@ -81,50 +82,55 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Notifikasi'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Semua'),
-              Tab(text: 'Pengumuman'),
-              Tab(text: 'Notifikasi'),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          const _NotificationBackdrop(),
+          SafeArea(
+            child: Column(
               children: [
-                TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.checklist, size: 16),
-                  label: const Text('Tandai semua dibaca'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildHeroCard(),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildTabBar(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.checklist, size: 16),
+                        label: const Text('Tandai semua dibaca'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildNotificationList(_all),
+                            _buildNotificationList(_announcements),
+                            _buildNotificationList(_notifications),
+                          ],
+                        ),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildNotificationList(_all),
-                      _buildNotificationList(_announcements),
-                      _buildNotificationList(_notifications),
-                    ],
-                  ),
           ),
         ],
       ),
@@ -135,41 +141,162 @@ class _NotificationScreenState extends State<NotificationScreen> with SingleTick
     );
   }
 
+  Widget _buildHeroCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(Icons.notifications_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notifikasi',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Pengumuman dan update penting tampil lebih rapi, dibagi per kategori.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        tabs: const [
+          Tab(text: 'Semua'),
+          Tab(text: 'Pengumuman'),
+          Tab(text: 'Notifikasi'),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNotificationList(List<Map<String, dynamic>> groups) {
+    if (groups.isEmpty) {
+      return const Center(child: Text('Belum ada notifikasi.'));
+    }
+
     return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: groups.length,
       itemBuilder: (context, groupIndex) {
         final group = groups[groupIndex];
         final items = group['items'] as List;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Text(
-                group['dateGroup'] as String,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-            ),
-            ...items.map((item) {
-              final map = item as Map<String, dynamic>;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: ListItemCard(
-                  title: map['title'] as String,
-                  subtitle: map['body'] as String,
-                  meta: '${map['type']} • ${map['time']}',
-                  leadingIcon: map['icon'] as IconData,
-                  leadingColor: _toneToColor(map['tone'] as String),
-                  isUnread: map['isUnread'] as bool,
-                  onTap: () {},
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(top: 14, bottom: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  group['dateGroup'] as String,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
-              );
-            }),
-          ],
+              ),
+              ...items.map((item) {
+                final map = item as Map<String, dynamic>;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: ListItemCard(
+                    title: map['title'] as String,
+                    subtitle: map['body'] as String,
+                    meta: '${map['type']} • ${map['time']}',
+                    leadingIcon: map['icon'] as IconData,
+                    leadingColor: _toneToColor(map['tone'] as String),
+                    isUnread: map['isUnread'] as bool,
+                    onTap: () {},
+                  ),
+                );
+              }),
+            ],
+          ),
         );
       },
     );
   }
+}
+
+class _NotificationBackdrop extends StatelessWidget {
+  const _NotificationBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: CustomPaint(painter: _NotificationBackdropPainter()),
+      ),
+    );
+  }
+}
+
+class _NotificationBackdropPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    paint.color = AppColors.info.withValues(alpha: 0.06);
+    canvas.drawCircle(
+      Offset(size.width * 0.92, size.height * 0.06),
+      105,
+      paint,
+    );
+
+    paint.color = AppColors.primary.withValues(alpha: 0.05);
+    canvas.drawCircle(Offset(size.width * 0.1, size.height * 0.2), 80, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

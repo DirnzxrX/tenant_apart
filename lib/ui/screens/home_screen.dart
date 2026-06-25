@@ -113,85 +113,96 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Halo, Tenant!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Text(
-              'Selamat datang di TenantHub',
-              style: TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => _pushScreen(const NotificationScreen()),
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          const _HomeBackdrop(),
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildAppBarCard(),
+                        const SizedBox(height: 16),
+                        _buildHeroCard(),
+                        const SizedBox(height: 18),
+                        _buildSectionHeader(
+                          'Ringkasan Hari Ini',
+                          trailingLabel: 'Lihat Semua',
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: _summary.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final item = entry.value;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: index == _summary.length - 1 ? 0 : 10,
+                                ),
+                                child: SummaryStatCard(
+                                  count: item['count'] as String,
+                                  label: item['label'] as String,
+                                  color: _toneToColor(item['tone'] as String),
+                                  icon: item['icon'] as IconData?,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 18),
+                        _buildSectionHeader('Akses Cepat'),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primaryDark.withValues(
+                                  alpha: 0.04,
+                                ),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: QuickAccessMenu(
+                            items: _menus,
+                            onTap: _handleQuickMenuTap,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _buildSectionHeader(
+                          'Pengumuman Terbaru',
+                          trailingLabel: 'Lihat Semua',
+                        ),
+                        const SizedBox(height: 10),
+                        ..._announcements.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ListItemCard(
+                              title: item['title']!,
+                              subtitle: item['body']!,
+                              meta: item['date']!,
+                              leadingIcon: Icons.campaign_outlined,
+                              leadingColor: AppColors.info,
+                              onTap: () {},
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 88),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSectionHeader('Ringkasan Hari Ini', trailingLabel: 'Lihat Semua'),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: _summary
-                          .map(
-                            (item) => SummaryStatCard(
-                              count: item['count'] as String,
-                              label: item['label'] as String,
-                              color: _toneToColor(item['tone'] as String),
-                              icon: item['icon'] as IconData,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Akses Cepat'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: QuickAccessMenu(
-                      items: _menus,
-                      onTap: _handleQuickMenuTap,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Pengumuman Terbaru', trailingLabel: 'Lihat Semua'),
-                  ..._announcements.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: ListItemCard(
-                        title: item['title']!,
-                        subtitle: item['body']!,
-                        meta: item['date']!,
-                        leadingIcon: Icons.campaign_outlined,
-                        leadingColor: AppColors.info,
-                        onTap: () {},
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
       bottomNavigationBar: MainBottomNav(
         currentIndex: 0,
         onTap: _handleBottomNavTap,
@@ -199,20 +210,205 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {String? trailingLabel}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  Widget _buildAppBarCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDark.withValues(alpha: 0.2),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (trailingLabel != null)
-            TextButton(
-              onPressed: () {},
-              child: Text(trailingLabel),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(18),
             ),
+            child: const Icon(Icons.apartment_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Halo, Tenant!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Selamat datang di TenantHub',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _pushScreen(const NotificationScreen()),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildHeroCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDark.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dashboard tenant yang lebih ringkas',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Semua layanan, tagihan, dan pengumuman ada di satu tempat dengan alur yang lebih cepat.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _buildHeroBadge('Aktif'),
+                    const SizedBox(width: 8),
+                    _buildHeroBadge('Terhubung'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.home_work_outlined,
+              size: 36,
+              color: AppColors.info,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.info,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {String? trailingLabel}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        if (trailingLabel != null)
+          TextButton(
+            onPressed: () {},
+            style: TextButton.styleFrom(
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(trailingLabel),
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeBackdrop extends StatelessWidget {
+  const _HomeBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(child: CustomPaint(painter: _BackdropPainter())),
+    );
+  }
+}
+
+class _BackdropPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    paint.color = AppColors.primary.withValues(alpha: 0.07);
+    canvas.drawCircle(
+      Offset(size.width * 0.86, size.height * 0.08),
+      120,
+      paint,
+    );
+
+    paint.color = AppColors.info.withValues(alpha: 0.06);
+    canvas.drawCircle(Offset(size.width * 0.08, size.height * 0.28), 90, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
