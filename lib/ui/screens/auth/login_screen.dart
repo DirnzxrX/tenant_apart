@@ -13,10 +13,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: ApiService.demoEmail);
-  final _passwordController = TextEditingController(
-    text: ApiService.demoPassword,
-  );
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final ApiService _apiService = ApiService.instance;
 
   bool _isPasswordVisible = false;
@@ -198,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 return null;
                               },
                               decoration: const InputDecoration(
-                                hintText: ApiService.demoEmail,
+                                hintText: 'Masukkan email atau username',
                                 prefixIcon: Icon(Icons.alternate_email_rounded),
                               ),
                             ),
@@ -225,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 return null;
                               },
                               decoration: InputDecoration(
-                                hintText: '********',
+                                hintText: 'Masukkan password',
                                 prefixIcon: const Icon(
                                   Icons.lock_outline_rounded,
                                 ),
@@ -293,20 +291,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       )
                                     : const Text('Masuk'),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Demo login: ${ApiService.demoEmail} / ${ApiService.demoPassword}',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: AppColors.primary),
                               ),
                             ),
                           ],

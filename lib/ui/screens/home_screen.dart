@@ -6,7 +6,10 @@ import '../../widgets/list_item_card.dart';
 import '../../widgets/main_bottom_nav.dart';
 import '../../widgets/quick_access_menu.dart';
 import '../../widgets/summary_stat_card.dart';
+import 'announcement_screen.dart';
 import 'billing_screen.dart';
+import 'document_screen.dart';
+import 'loading_delivery.dart';
 import 'notification_screen.dart';
 import 'permit_screen.dart';
 import 'profile_screen.dart';
@@ -34,17 +37,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    final summary = await _apiService.getHomeSummary();
-    final menus = await _apiService.getQuickMenus();
-    final announcements = await _apiService.getAnnouncements();
+    try {
+      final summary = await _apiService.getHomeSummary();
+      final menus = await _apiService.getQuickMenus();
+      final announcements = await _apiService.getAnnouncements();
 
-    if (!mounted) return;
-    setState(() {
-      _summary = summary;
-      _menus = menus;
-      _announcements = announcements;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _menus = menus;
+        _announcements = announcements;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _summary = const [];
+        _menus = const [];
+        _announcements = const [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
   Color _toneToColor(String tone) {
@@ -73,19 +89,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleQuickMenuTap(String title) {
-    switch (title) {
-      case 'Service Request':
+    final normalized = title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
+
+    switch (normalized) {
+      case 'servicerequest':
         _pushScreen(const RequestsScreen());
         return;
-      case 'Billing':
+      case 'billing':
         _pushScreen(const BillingScreen());
         return;
-      case 'Permit & Approval':
+      case 'permitapproval':
         _pushScreen(const PermitScreen());
+        return;
+      case 'notifications':
+      case 'notification':
+        _pushScreen(const NotificationScreen());
+        return;
+      case 'documents':
+      case 'document':
+        _pushScreen(const DocumentScreen());
+        return;
+      case 'loadingdelivery':
+      case 'loading':
+        _pushScreen(const LoadingDeliveryScreen());
         return;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Menu $title masih menggunakan data dummy.')),
+          SnackBar(content: Text('Menu $title belum tersedia.')),
         );
     }
   }
@@ -179,6 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildSectionHeader(
                           'Pengumuman Terbaru',
                           trailingLabel: 'Lihat Semua',
+                          onTrailingTap: () {
+                            _pushScreen(const AnnouncementScreen());
+                          },
                         ),
                         const SizedBox(height: 10),
                         ..._announcements.map(
@@ -271,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {String? trailingLabel}) {
+  Widget _buildSectionHeader(String title, {String? trailingLabel, VoidCallback? onTrailingTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -284,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (trailingLabel != null)
           TextButton(
-            onPressed: () {},
+            onPressed: onTrailingTap ?? () {},
             style: TextButton.styleFrom(
               minimumSize: Size.zero,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

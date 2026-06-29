@@ -5,7 +5,6 @@ import '../../data/api_service.dart';
 import '../../widgets/list_item_card.dart';
 import '../../widgets/main_bottom_nav.dart';
 import 'billing_screen.dart';
-import 'home_screen.dart';
 import 'service_request_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -33,17 +32,30 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   Future<void> _loadData() async {
-    final all = await _apiService.getNotifications('Semua');
-    final announcements = await _apiService.getNotifications('Pengumuman');
-    final notifications = await _apiService.getNotifications('Notifikasi');
+    try {
+      final all = await _apiService.getNotifications('Semua');
+      final announcements = await _apiService.getNotifications('Pengumuman');
+      final notifications = await _apiService.getNotifications('Notifikasi');
 
-    if (!mounted) return;
-    setState(() {
-      _all = all;
-      _announcements = announcements;
-      _notifications = notifications;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _all = all;
+        _announcements = announcements;
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _all = const [];
+        _announcements = const [];
+        _notifications = const [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
   Color _toneToColor(String tone) {
@@ -60,10 +72,9 @@ class _NotificationScreenState extends State<NotificationScreen>
   }
 
   void _handleBottomNavTap(int index) {
-    if (index == 2) return;
+    if (index == 0) return;
 
     final Widget target = switch (index) {
-      0 => const HomeScreen(),
       1 => const RequestsScreen(),
       _ => const BillingScreen(),
     };
@@ -135,7 +146,7 @@ class _NotificationScreenState extends State<NotificationScreen>
         ],
       ),
       bottomNavigationBar: MainBottomNav(
-        currentIndex: 2,
+        currentIndex: 0,
         onTap: _handleBottomNavTap,
       ),
     );
@@ -252,7 +263,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                   child: ListItemCard(
                     title: map['title'] as String,
                     subtitle: map['body'] as String,
-                    meta: '${map['type']} • ${map['time']}',
+                    meta: '${map['type']} | ${map['time']}',
                     leadingIcon: map['icon'] as IconData,
                     leadingColor: _toneToColor(map['tone'] as String),
                     isUnread: map['isUnread'] as bool,

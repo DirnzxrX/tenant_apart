@@ -31,15 +31,27 @@ class _PermitScreenState extends State<PermitScreen>
   }
 
   Future<void> _loadData() async {
-    final metrics = await _apiService.getPermitMetrics();
-    final permits = await _apiService.getPermits();
+    try {
+      final metrics = await _apiService.getPermitMetrics();
+      final permits = await _apiService.getPermits();
 
-    if (!mounted) return;
-    setState(() {
-      _metrics = metrics;
-      _permits = permits;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _metrics = metrics;
+        _permits = permits;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _metrics = const [];
+        _permits = const [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
   @override
@@ -49,12 +61,7 @@ class _PermitScreenState extends State<PermitScreen>
   }
 
   void _handleBottomNavTap(int index) {
-    if (index == 1) return;
-
-    if (index == 0) {
-      Navigator.pop(context);
-      return;
-    }
+    if (index == 0) return;
 
     final Widget target = switch (index) {
       2 => const BillingScreen(),
@@ -140,7 +147,7 @@ class _PermitScreenState extends State<PermitScreen>
         ],
       ),
       bottomNavigationBar: MainBottomNav(
-        currentIndex: 1,
+        currentIndex: 0,
         onTap: _handleBottomNavTap,
       ),
     );

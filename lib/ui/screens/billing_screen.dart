@@ -32,17 +32,36 @@ class _BillingScreenState extends State<BillingScreen>
   }
 
   Future<void> _loadData() async {
-    final results = await Future.wait([
-      _apiService.getBillingSummary(),
-      _apiService.getInvoices(),
-    ]);
+    try {
+      final results = await Future.wait([
+        _apiService.getBillingSummary(),
+        _apiService.getInvoices(),
+      ]);
 
-    if (!mounted) return;
-    setState(() {
-      _summary = results[0] as Map<String, String>;
-      _invoices = results[1] as List<Map<String, String>>;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _summary = results[0] as Map<String, String>;
+        _invoices = results[1] as List<Map<String, String>>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _summary = {
+          'totalOutstanding': 'Rp 0',
+          'subtitle': 'Data billing belum tersedia',
+        };
+        _invoices = const [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+          ),
+        ),
+      );
+    }
   }
 
   @override

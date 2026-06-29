@@ -31,17 +31,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
   }
 
   Future<void> _loadData() async {
-    final categories = await _apiService.getServiceCategories();
-    final stats = await _apiService.getRequestStats();
-    final recentRequests = await _apiService.getRecentRequests();
+    try {
+      final categories = await _apiService.getServiceCategories();
+      final stats = await _apiService.getRequestStats();
+      final recentRequests = await _apiService.getRecentRequests();
 
-    if (!mounted) return;
-    setState(() {
-      _categories = categories;
-      _stats = stats;
-      _recentRequests = recentRequests;
-      _isLoading = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        _stats = stats;
+        _recentRequests = recentRequests;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _categories = const [];
+        _stats = const [];
+        _recentRequests = const [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    }
   }
 
   Color _toneToColor(String tone) {
